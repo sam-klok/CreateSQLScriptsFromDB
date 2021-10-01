@@ -5,8 +5,8 @@ using System.Linq;
 using System.Collections;
 using System.IO;
 using System.Collections.Specialized;
-using Microsoft.Extensions.Hosting;
 using Microsoft.SqlServer.Management.Smo;
+using Microsoft.Extensions.Configuration;  // to read appsettings.json
 
 namespace CreateSQLScriptsFromDB
 {
@@ -16,78 +16,64 @@ namespace CreateSQLScriptsFromDB
         const string list_of_stored_procs = "list of stored procedures.txt";
         const string list_of_views = "list of views.txt";
 
+        readonly static ScriptingOptions scriptOptionsDrop = new ScriptingOptions()
+        {
+            ScriptDrops = true,
+            IncludeIfNotExists = true,
+            AnsiPadding = false,
+        };
+
+        readonly static ScriptingOptions scriptOptionsCreate = new ScriptingOptions()
+        {
+            //WithDependencies = true,  // will add create table before create view
+            IncludeHeaders = false,  /****** Object:  View [dbo].[v_people]    Script Date: 9/30/2021 6:03:10 PM ******/
+            ScriptSchema = true,
+            ScriptData = false,
+            Indexes = true,
+            ClusteredIndexes = true,
+            FullTextIndexes = true,
+
+            // GO
+            FileName = "test.sql",
+            ScriptBatchTerminator = true,
+            NoCommandTerminator = false,
+            //ToFileOnly = true,  // it makes script empty
+            AppendToFile = true,
+            EnforceScriptingOptions = true,
+            AllowSystemObjects = true,
+            Permissions = true,
+            DriAllConstraints = true,
+            SchemaQualify = true,
+            AnsiFile = true,
+            //AnsiPadding = false,
+        };
+
         static async Task Main(string[] args)
         {
-            //using IHost host = CreateHostBuilder(args).Build();
-            // Application code should start here.
+            // reading configuration from appsettings.json file
+            var configurationBuilder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false);
 
-            ScriptDatabaseObjects();
+            IConfiguration configuration = configurationBuilder.Build();
 
-            //ScriptDatabaseObjectDemo();
-            //await host.RunAsync();
+            string serverName = configuration["DatabaseSettings:Server"];
+            string databaseName = configuration["DatabaseSettings:Database"];
+
+            ScriptDatabaseObjects(serverName, databaseName);
+            //ScriptDatabaseObjectDemo(serverName, databaseName);
+
         }
 
-        static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args);
-
-
-        public static async void ScriptDatabaseObjects()
+        public static async void ScriptDatabaseObjects(string serverName, string databaseName)
         {
-            var server = new Server("localhost");
-            var databse = server.Databases["LifelongLearning"];
-
-            var scriptOptionsDrop = new ScriptingOptions()
-            {
-                ScriptDrops = true,
-                IncludeIfNotExists = true,
-                AnsiPadding = false,
-
-                //WithDependencies = true,
-                //IncludeHeaders = true,
-                //ScriptSchema = true,
-                //Indexes = true,
-                //ClusteredIndexes = true,
-
-                //FileName = "test.sql",
-                //ScriptBatchTerminator = true,
-                //NoCommandTerminator = false,
-                //ToFileOnly = false,
-                //AppendToFile = true,
-                //EnforceScriptingOptions = true,
-
-                //Default = true,
-                //DriAll = true,
-            };
-
-            var scriptOptionsCreate = new ScriptingOptions()
-            {
-                //WithDependencies = true,  // will add create table before create view
-                IncludeHeaders = false,  /****** Object:  View [dbo].[v_people]    Script Date: 9/30/2021 6:03:10 PM ******/
-                ScriptSchema = true,
-                ScriptData = false,
-                Indexes = true,
-                ClusteredIndexes = true,
-                FullTextIndexes = true,
-
-                // GO
-                FileName = "test.sql",
-                ScriptBatchTerminator = true,
-                NoCommandTerminator = false,
-                //ToFileOnly = true,  // it makes script empty
-                AppendToFile = true,
-                EnforceScriptingOptions = true,
-                AllowSystemObjects = true,
-                Permissions = true,
-                DriAllConstraints = true,
-                SchemaQualify = true,
-                AnsiFile = true,
-                //AnsiPadding = false,
-            };
-
             PrepareOutputFolder();
 
-            await ScriptStoredProcedureObjectsToFiles(databse, scriptOptionsDrop, scriptOptionsCreate);
-            await ScriptViewObjectsToFiles(databse, scriptOptionsDrop, scriptOptionsCreate);
+            var server = new Server(serverName);
+            var database = server.Databases[databaseName];
+
+            await ScriptStoredProcedureObjectsToFiles(database);
+            await ScriptViewObjectsToFiles(database);
 
         }
 
@@ -99,10 +85,7 @@ namespace CreateSQLScriptsFromDB
                 file.Delete();
         }
 
-        private static async Task ScriptStoredProcedureObjectsToFiles(
-            Database database, 
-            ScriptingOptions scriptOptionsDrop, 
-            ScriptingOptions scriptOptionsCreate)
+        private static async Task ScriptStoredProcedureObjectsToFiles(Database database) 
         {
             string[] lines = File.ReadAllLines(list_of_stored_procs);
 
@@ -154,10 +137,7 @@ namespace CreateSQLScriptsFromDB
             }
         }
 
-        private static async Task ScriptViewObjectsToFiles(
-            Database database,
-            ScriptingOptions scriptOptionsDrop,
-            ScriptingOptions scriptOptionsCreate)
+        private static async Task ScriptViewObjectsToFiles(Database database)
 
         {
             string[] lines = File.ReadAllLines(list_of_views);
@@ -211,12 +191,10 @@ namespace CreateSQLScriptsFromDB
             }
         }
 
-        public static void ScriptDatabaseObjectDemo()
+        public static void ScriptDatabaseObjectDemo(string serverName, string databaseName)
         {
-            //var sb = new StringBuilder();
-
-            var server = new Server("localhost");
-            var databse = server.Databases["LifelongLearning"];
+            var server = new Server(serverName);
+            var database = server.Databases[databaseName];
 
             var scriptOptions = new ScriptingOptions() {
                 ScriptDrops = true,
@@ -230,7 +208,7 @@ namespace CreateSQLScriptsFromDB
             string script1 = "";
             string script2 = "";
 
-            foreach (Microsoft.SqlServer.Management.Smo.StoredProcedure sp in databse.StoredProcedures)
+            foreach (Microsoft.SqlServer.Management.Smo.StoredProcedure sp in database.StoredProcedures)
             {
                 if (sp.ToString() == "[dbo].[sp_get_people]")  // we need to provide full name
                 {
