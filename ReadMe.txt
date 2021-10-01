@@ -1,9 +1,10 @@
 Task:
 To generate MS SQL scripts for each stored procedure/view/table/trigger... etc
 
-It's quick and dirty project for now, so a bunch of poor coding here.
+The Microsoft Strikes Back: library SMO (Server Management Object) sucks big time, it's buggy and hard to work with!
 
-On top of it Microsoft library SMO (Server Management Object) sucks big time, it's buggy and hard to work with. 
+It's quick and dirty project for now, but it works.
+
 I have other very similar project under standard .Net 4.6.7 and it works better without falling into "exit with code 0" error.
 
 Thank you
