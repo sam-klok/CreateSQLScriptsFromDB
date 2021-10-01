@@ -1,1 +1,2 @@
 [dbo].[sp_get_people]
+dbo.nonexistantproc

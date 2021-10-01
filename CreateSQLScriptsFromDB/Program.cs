@@ -91,49 +91,50 @@ namespace CreateSQLScriptsFromDB
 
             foreach (string dbObjectName in lines)
             {
-                var script = new StringBuilder();
+                var schema = dbObjectName.Split('.')[0].Replace("[","").Replace("]", "");
+                var name = dbObjectName.Split('.')[1].Replace("[", "").Replace("]", "");
 
-                foreach (StoredProcedure sp in database.StoredProcedures)
+                var dbObj = database.StoredProcedures[name, schema];
+                if (dbObj != null)
                 {
-                    if (sp.ToString() == dbObjectName)
+                    Console.WriteLine(dbObj);
+
+                    var script = new StringBuilder();
+                    script.AppendLine("USE LifelongLearning");
+                    script.AppendLine("GO");
+                    script.AppendLine();
+
+                    //StringCollection scripts = sp.Script(scriptOptionsDrop);
+                    //foreach (string s in scripts)
+                    //    script.AppendLine(s);
+                    //script.AppendLine("GO");
+                    //script.AppendLine();
+
+                    /* Generating CREATE command */
+                    StringCollection scripts = dbObj.Script(scriptOptionsCreate);
+                    foreach (string s in scripts)
                     {
-                        Console.WriteLine(sp);
-
-                        script.AppendLine("USE LifelongLearning");
-                        script.AppendLine("GO");
-                        script.AppendLine();
-
-                        //StringCollection scripts = sp.Script(scriptOptionsDrop);
-                        //foreach (string s in scripts)
-                        //    script.AppendLine(s);
-                        //script.AppendLine("GO");
-                        //script.AppendLine();
-
-                        /* Generating CREATE command */
-                        StringCollection scripts = sp.Script(scriptOptionsCreate);
-                        foreach (string s in scripts)
+                        if (s.Contains("CREATE ", StringComparison.OrdinalIgnoreCase))
                         {
-                            if (s.Contains("CREATE ", StringComparison.OrdinalIgnoreCase))
-                            {
-                                string s2 = s.Replace("CREATE ", "ALTER ", StringComparison.OrdinalIgnoreCase);
-                                script.AppendLine(s2);
-                            }
-                            else
-                            {
-                                script.AppendLine(s);
-                            }
-
-                            // it's a hack because scripting of the "GO" not working well
-                            if (s == "SET ANSI_NULLS ON" || s == "SET QUOTED_IDENTIFIER ON")
-                                script.AppendLine("GO");
+                            string s2 = s.Replace("CREATE ", "ALTER ", StringComparison.OrdinalIgnoreCase);
+                            script.AppendLine(s2);
+                        }
+                        else
+                        {
+                            script.AppendLine(s);
                         }
 
-                        script.AppendLine("GO");
-
-                        string fileName = dbObjectName + ".sql";
-                        await File.WriteAllTextAsync(folder + "\\" + fileName, script.ToString());
+                        // it's a hack because scripting of the "GO" not working well
+                        if (s == "SET ANSI_NULLS ON" || s == "SET QUOTED_IDENTIFIER ON")
+                            script.AppendLine("GO");
                     }
+
+                    script.AppendLine("GO");
+
+                    string fileName = dbObjectName + ".sql";
+                    await File.WriteAllTextAsync(folder + "\\" + fileName, script.ToString());
                 }
+
             }
         }
 
@@ -144,50 +145,43 @@ namespace CreateSQLScriptsFromDB
 
             foreach (string dbObjectName in lines)
             {
-                var script = new StringBuilder();
+                var schema = dbObjectName.Split('.')[0].Replace("[", "").Replace("]", "");
+                var name = dbObjectName.Split('.')[1].Replace("[", "").Replace("]", "");
 
-                foreach (View view in database.Views)
+                var dbObj = database.Views[name, schema];  // get object from the collection
+                if (dbObj != null)
                 {
-                    if (view.ToString() == dbObjectName)
+                    Console.WriteLine(dbObj);
+
+                    var script = new StringBuilder();
+                    script.AppendLine("USE LifelongLearning");
+                    script.AppendLine("GO");
+                    script.AppendLine();
+
+                    // 2nd part - Generating CREATE command 
+                    StringCollection scripts = dbObj.Script(scriptOptionsCreate);
+                    foreach (string s in scripts)
                     {
-                        Console.WriteLine(view);
-
-                        script.AppendLine("USE LifelongLearning");
-                        script.AppendLine("GO");
-                        script.AppendLine();
-
-                        // 1st part of script
-                        //StringCollection scripts = view.Script(scriptOptionsDrop);
-                        //foreach (string s in scripts)
-                        //    script.AppendLine(s);
-
-                        //script.AppendLine("GO"); 
-                        //script.AppendLine();
-
-                        // 2nd part - Generating CREATE command 
-                        StringCollection scripts = view.Script(scriptOptionsCreate);
-                        foreach (string s in scripts)
+                        if (s.Contains("CREATE ", StringComparison.OrdinalIgnoreCase))
                         {
-                            if (s.Contains("CREATE ", StringComparison.OrdinalIgnoreCase))
-                            {
-                                string s2 = s.Replace("CREATE ", "ALTER ", StringComparison.OrdinalIgnoreCase);
-                                script.AppendLine(s2);
-                            }
-                            else
-                            {
-                                script.AppendLine(s);
-                            }
-
-                            if (s == "SET ANSI_NULLS ON" || s == "SET QUOTED_IDENTIFIER ON")
-                                script.AppendLine("GO");
+                            string s2 = s.Replace("CREATE ", "ALTER ", StringComparison.OrdinalIgnoreCase);
+                            script.AppendLine(s2);
+                        }
+                        else
+                        {
+                            script.AppendLine(s);
                         }
 
-                        script.AppendLine("GO");
-
-                        string fileName = dbObjectName + ".sql";
-                        await File.WriteAllTextAsync(folder + "\\" + fileName, script.ToString());
+                        if (s == "SET ANSI_NULLS ON" || s == "SET QUOTED_IDENTIFIER ON")
+                            script.AppendLine("GO");
                     }
+
+                    script.AppendLine("GO");
+
+                    string fileName = dbObjectName + ".sql";
+                    await File.WriteAllTextAsync(folder + "\\" + fileName, script.ToString());
                 }
+
             }
         }
 
